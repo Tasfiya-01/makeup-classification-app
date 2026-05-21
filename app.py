@@ -3,40 +3,46 @@ import tensorflow as tf
 from PIL import Image
 import numpy as np
 
-# ১. মডেল লোড করার ফাংশন (ক্যাশিং যাতে বারবার লোড না হয়)
+# Set page configuration
+st.set_page_config(page_title="Makeup Classifier", page_icon="💄")
+
+# Function to load the model with custom object handling
 @st.cache_resource
 def load_model():
-    # এখানে 'GetItem' লেয়ারের জন্য কাস্টম অবজেক্ট হ্যান্ডেল করা হয়েছে
-    # যদি আপনার মডেলে নির্দিষ্ট কোনো কাস্টম লেয়ার থাকে, তা এখানে যোগ করুন
-    model = tf.keras.models.load_model('model.h5', custom_objects={'GetItem': tf.keras.layers.Lambda})
+    # 'GetItem' error usually occurs due to specific Keras versioning
+    # We define a custom Lambda layer to handle this specific issue
+    model = tf.keras.models.load_model(
+        'model.h5', 
+        custom_objects={'GetItem': tf.keras.layers.Lambda(lambda x: x)}
+    )
     return model
 
-# ২. ইমেজ প্রিপ্রসেসিং ফাংশন
+# Function to preprocess the image
 def preprocess_image(image):
-    image = image.resize((224, 224))  # আপনার মডেলের ইনপুট সাইজ অনুযায়ী পরিবর্তন করুন
+    image = image.resize((224, 224))
     img_array = np.array(image) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
-# ৩. অ্যাপের ইন্টারফেস
-st.title("মেকআপ ক্লাসিফায়ার অ্যাপ")
-st.write("আপনার ইমেজের মেকআপ স্টাইল শনাক্ত করুন।")
+# UI Layout
+st.title("💄 Makeup Style Classifier")
+st.write("Upload an image to identify the makeup style.")
 
-uploaded_file = st.file_uploader("একটি ছবি আপলোড করুন...", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
-    st.image(image, caption='আপলোড করা ছবি', use_column_width=True)
+    st.image(image, caption='Uploaded Image', use_column_width=True)
     
-    # মডেল লোড করা
-    model = load_model()
-    
-    # প্রেডিকশন
-    processed_img = preprocess_image(image)
-    prediction = model.predict(processed_img)
-    
-    # আউটপুট দেখানো
-    st.write("প্রেডিকশন সম্পন্ন!")
-    # আপনার ক্লাসের লিস্ট অনুযায়ী আউটপুট দেখান
-    classes = ["Natural", "Glam", "Minimalist"] # আপনার মডেলের ক্লাসগুলো এখানে দিন
-    st.success(f"শনাক্তকৃত স্টাইল: {classes[np.argmax(prediction)]}")
+    with st.spinner('Loading model and analyzing...'):
+        try:
+            model = load_model()
+            processed_img = preprocess_image(image)
+            prediction = model.predict(processed_img)
+            
+            # Define your class names based on your model training
+            classes = ["Natural", "Glam", "Minimalist"] 
+            
+            st.success(f"Result: {classes[np.argmax(prediction)]}")
+        except Exception as e:
+            st.error(f"Error during analysis: {e}")
