@@ -1,4 +1,4 @@
-tf-nightly
+tensorflow
 streamlit
 pillow
-requests
+numpy
