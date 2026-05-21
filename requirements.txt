@@ -1,7 +1,6 @@
 streamlit
-tensorflow
+tf-nightly
 numpy
 pillow
-requests
 gdown
 plotly
