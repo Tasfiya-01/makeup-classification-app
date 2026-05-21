@@ -2,72 +2,41 @@ import streamlit as st
 import tensorflow as tf
 from PIL import Image
 import numpy as np
-import os
-import requests
 
-# ১. গুগল ড্রাইভ থেকে মডেল ডাউনলোড করার ফাংশন
+# ১. মডেল লোড করার ফাংশন (ক্যাশিং যাতে বারবার লোড না হয়)
 @st.cache_resource
-def load_model_from_drive():
-    model_path = 'makeup_style_resnet50.h5'
+def load_model():
+    # এখানে 'GetItem' লেয়ারের জন্য কাস্টম অবজেক্ট হ্যান্ডেল করা হয়েছে
+    # যদি আপনার মডেলে নির্দিষ্ট কোনো কাস্টম লেয়ার থাকে, তা এখানে যোগ করুন
+    model = tf.keras.models.load_model('model.h5', custom_objects={'GetItem': tf.keras.layers.Lambda})
+    return model
+
+# ২. ইমেজ প্রিপ্রসেসিং ফাংশন
+def preprocess_image(image):
+    image = image.resize((224, 224))  # আপনার মডেলের ইনপুট সাইজ অনুযায়ী পরিবর্তন করুন
+    img_array = np.array(image) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
+
+# ৩. অ্যাপের ইন্টারফেস
+st.title("মেকআপ ক্লাসিফায়ার অ্যাপ")
+st.write("আপনার ইমেজের মেকআপ স্টাইল শনাক্ত করুন।")
+
+uploaded_file = st.file_uploader("একটি ছবি আপলোড করুন...", type=["jpg", "png", "jpeg"])
+
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
+    st.image(image, caption='আপলোড করা ছবি', use_column_width=True)
     
-    if not os.path.exists(model_path):
-        with st.spinner("Downloading model from Google Drive... Please wait, this takes a few minutes but happens only once."):
-            # তোর শেয়ার করা গুগল ড্রাইভ লিঙ্ক
-            drive_url = "https://drive.google.com/file/d/1vACDcidGM2r41GAMqbKRySnIbJ6y7JAg/view?usp=sharing"
-            
-            # লিঙ্ক থেকে ফাইল আইডি বের করার নিয়ম
-            if "id=" in drive_url:
-                file_id = drive_url.split("id=")[1].split("&")[0]
-            else:
-                file_id = drive_url.split("/d/")[1].split("/")[0]
-                
-            download_url = f"https://docs.google.com/uc?export=download&id={file_id}"
-            
-            # ডাউনলোড শুরু
-            response = requests.get(download_url, stream=True)
-            with open(model_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        
-    return tf.keras.models.load_model(model_path)
-
-try:
-    model = load_model_from_drive()
-    model_loaded = True
-except Exception as e:
-    model_loaded = False
-    st.error(f"Error loading model: {e}")
-
-# ২. ক্লাসের নামগুলো
-class_names = [
-    'smokey_eyes_makeup', 'evening_makeup', 'evening_glamour_makeup', 
-    'bold_makeup', 'fantasy_makeup', 'casual_makeup', 'no_makeup', 'vintage_makeup'
-]
-
-# ৩. ইন্টারফেস
-st.set_page_config(page_title="Makeup Classifier", page_icon="💄")
-st.title("💄 Makeup Style Classification System")
-st.write("Upload an image, and our ResNet50 model will detect the makeup style!")
-
-if model_loaded:
-    uploaded_file = st.file_uploader("Choose a makeup image...", type=["jpg", "jpeg", "png"])
-
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption='Uploaded Image', use_column_width=True)
-        st.write("🔄 Classifying...")
-        
-        img = image.resize((224, 224))
-        img_array = tf.keras.utils.img_to_array(img)
-        img_array = tf.expand_dims(img_array, 0)
-        img_array = tf.keras.applications.resnet50.preprocess_input(img_array)
-        
-        predictions = model.predict(img_array)
-        score = tf.nn.softmax(predictions[0])
-        
-        predicted_class = class_names[np.argmax(score)]
-        confidence = 100 * np.max(score)
-        
-        st.success(f"🎯 **Prediction:** {predicted_class.replace('_', ' ').title()}")
-        st.info(f"📊 **Confidence Level:** {confidence:.2f}%")
+    # মডেল লোড করা
+    model = load_model()
+    
+    # প্রেডিকশন
+    processed_img = preprocess_image(image)
+    prediction = model.predict(processed_img)
+    
+    # আউটপুট দেখানো
+    st.write("প্রেডিকশন সম্পন্ন!")
+    # আপনার ক্লাসের লিস্ট অনুযায়ী আউটপুট দেখান
+    classes = ["Natural", "Glam", "Minimalist"] # আপনার মডেলের ক্লাসগুলো এখানে দিন
+    st.success(f"শনাক্তকৃত স্টাইল: {classes[np.argmax(prediction)]}")
