@@ -1,5 +1,4 @@
+tf-nightly
 streamlit
 pillow
 requests
---extra-index-url https://pypi.python.org/simple
-tensorflow
