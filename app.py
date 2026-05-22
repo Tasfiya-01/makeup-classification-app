@@ -80,7 +80,7 @@ def load_model():
     model_path = "model.h5"
     if not os.path.exists(model_path):
         st.info("⬇️ Downloading model... please wait.")
-        file_id = "https://drive.google.com/drive/folders/1okMi772YSi2zUz6Ys9beeBF0lynKmMNu?usp=drive_link"
+        file_id = "1vACDcidGM2r41GAMqbKRySnIbJ6y7JAg"
         gdown.download(
             f"https://drive.google.com/uc?id={file_id}",
             model_path,
