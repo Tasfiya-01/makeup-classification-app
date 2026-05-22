@@ -79,8 +79,32 @@ def load_model():
     if not os.path.exists(model_path):
         st.info("⬇️ Downloading model... please wait.")
         file_id = "1vACDcidGM2r41GAMqbKRySnIbJ6y7JAg"
-        gdown.download(f"https://drive.google.com/uc?id={file_id}", model_path, quiet=False)
-    return tf.keras.models.load_model(model_path)
+        gdown.download(
+            f"https://drive.google.com/uc?id={file_id}",
+            model_path,
+            quiet=False
+        )
+
+    # GetItem error fix — তিনটা উপায়ে try করবে
+    try:
+        model = tf.keras.models.load_model(model_path, compile=False)
+    except Exception:
+        try:
+            custom_objects = {
+                'GetItem': tf.keras.layers.Lambda(lambda x: x)
+            }
+            model = tf.keras.models.load_model(
+                model_path,
+                custom_objects=custom_objects,
+                compile=False
+            )
+        except Exception:
+            model = tf.keras.models.load_model(
+                model_path,
+                compile=False,
+                safe_mode=False
+            )
+    return model
 
 # ─── Image Preprocessing ──────────────────────────────────────
 def preprocess_image(image):
@@ -160,7 +184,6 @@ with col2:
                 top_class  = CLASSES[idx]
                 info       = CLASS_INFO[top_class]
 
-                # Result card
                 st.markdown(f"""
                 <div class="result-card">
                     <div style="font-size:3rem">{info['emoji']}</div>
@@ -172,7 +195,6 @@ with col2:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Top 3
                 st.markdown("#### 🏆 Top 3 Predictions")
                 top3 = np.argsort(prediction[0])[::-1][:3]
                 for rank, i in enumerate(top3):
@@ -181,11 +203,8 @@ with col2:
                     score = float(prediction[0][i]) * 100
                     st.markdown(f"{medal} **{cls.replace('_',' ').title()}** — `{score:.1f}%`")
 
-                # Full chart
                 st.markdown("#### 📊 All Class Scores")
                 st.plotly_chart(make_chart(prediction), use_container_width=True)
 
-            except FileNotFoundError:
-                st.error("❌ model.h5 not found.")
             except Exception as e:
                 st.error(f"Error: {e}")
