@@ -5,6 +5,7 @@ import numpy as np
 import os
 import gdown
 import plotly.graph_objects as go
+import keras
 
 st.set_page_config(
     page_title="Makeup Style Classifier",
@@ -66,15 +67,6 @@ CLASS_INFO = {
 }
 
 
-@tf.keras.utils.register_keras_serializable()
-class GetItem(tf.keras.layers.Layer):
-    def call(self, inputs, idx=0):
-        return inputs[idx]
-
-    def get_config(self):
-        return super().get_config()
-
-
 @st.cache_resource
 def load_model():
     model_path = "model.h5"
@@ -86,11 +78,8 @@ def load_model():
             model_path,
             quiet=False
         )
-    model = tf.keras.models.load_model(
-        model_path,
-        compile=False,
-        safe_mode=False
-    )
+    keras.config.enable_unsafe_deserialization()
+    model = tf.keras.models.load_model(model_path, compile=False)
     return model
 
 
@@ -105,7 +94,9 @@ def make_chart(prediction):
     labels = [f"{CLASS_INFO[c]['emoji']} {c.replace('_', ' ').title()}" for c in CLASSES]
     colors = ["#e94560" if s == max(scores) else "#3a3a6e" for s in scores]
     fig = go.Figure(go.Bar(
-        x=scores, y=labels, orientation="h",
+        x=scores,
+        y=labels,
+        orientation="h",
         marker=dict(color=colors, line=dict(color="#ffffff22", width=1)),
         text=[f"{s:.1f}%" for s in scores],
         textposition="outside",
@@ -150,7 +141,7 @@ with col1:
     )
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
+        st.image(image, caption="Uploaded Image", width=400)
 
 with col2:
     st.markdown("### 🔍 Analysis Result")
