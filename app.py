@@ -72,6 +72,12 @@ CLASS_INFO = {
     "vintage_makeup":         {"emoji": "🎭", "desc": "Classic retro styles from past decades"},
 }
 
+# ─── GetItem Layer Fix ────────────────────────────────────────
+@tf.keras.utils.register_keras_serializable()
+class GetItem(tf.keras.layers.Layer):
+    def call(self, inputs, idx=0):
+        return inputs[idx]
+
 # ─── Model Loading ────────────────────────────────────────────
 @st.cache_resource
 def load_model():
@@ -84,26 +90,18 @@ def load_model():
             model_path,
             quiet=False
         )
-
-    # GetItem error fix — তিনটা উপায়ে try করবে
     try:
-        model = tf.keras.models.load_model(model_path, compile=False)
+        model = tf.keras.models.load_model(
+            model_path,
+            custom_objects={'GetItem': GetItem},
+            compile=False
+        )
     except Exception:
-        try:
-            custom_objects = {
-                'GetItem': tf.keras.layers.Lambda(lambda x: x)
-            }
-            model = tf.keras.models.load_model(
-                model_path,
-                custom_objects=custom_objects,
-                compile=False
-            )
-        except Exception:
-            model = tf.keras.models.load_model(
-                model_path,
-                compile=False,
-                safe_mode=False
-            )
+        model = tf.keras.models.load_model(
+            model_path,
+            compile=False,
+            safe_mode=False
+        )
     return model
 
 # ─── Image Preprocessing ──────────────────────────────────────
@@ -166,7 +164,7 @@ with col1:
     )
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
+        st.image(image, caption="Uploaded Image", width="stretch")
 
 with col2:
     st.markdown("### 🔍 Analysis Result")
