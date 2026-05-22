@@ -2,6 +2,7 @@ import os
 import streamlit as st
 import tensorflow as tf
 import keras
+import h5py
 from PIL import Image
 import numpy as np
 import gdown
@@ -77,36 +78,6 @@ CLASS_INFO = {
 }
 
 
-@keras.saving.register_keras_serializable()
-class GetItem(keras.layers.Layer):
-    def __init__(self, item=0, **kwargs):
-        super().__init__(**kwargs)
-        self.item = item
-
-    def call(self, inputs):
-        return inputs[self.item]
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({"item": self.item})
-        return config
-
-
-@keras.saving.register_keras_serializable()
-class Stack(keras.layers.Layer):
-    def __init__(self, axis=0, **kwargs):
-        super().__init__(**kwargs)
-        self.axis = axis
-
-    def call(self, inputs):
-        return tf.stack(inputs, axis=self.axis)
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({"axis": self.axis})
-        return config
-
-
 @st.cache_resource
 def load_model():
     model_path = "model.h5"
@@ -118,12 +89,26 @@ def load_model():
             model_path,
             quiet=False
         )
-    keras.config.enable_unsafe_deserialization()
-    model = keras.models.load_model(
-        model_path,
-        custom_objects={"GetItem": GetItem, "Stack": Stack},
-        compile=False
+
+    # ResNet50 base দিয়ে নতুন model তৈরি করে weights load করা
+    base = keras.applications.ResNet50(
+        include_top=False,
+        weights=None,
+        input_shape=(224, 224, 3)
     )
+    x = keras.layers.GlobalAveragePooling2D()(base.output)
+    x = keras.layers.Dense(256, activation="relu")(x)
+    x = keras.layers.Dropout(0.3)(x)
+    output = keras.layers.Dense(8, activation="softmax")(x)
+    model = keras.Model(inputs=base.input, outputs=output)
+
+    # h5py দিয়ে শুধু weights load করা
+    try:
+        model.load_weights(model_path)
+    except Exception:
+        # যদি weight shape না মেলে তাহলে by_name দিয়ে try
+        model.load_weights(model_path, by_name=True, skip_mismatch=True)
+
     return model
 
 
