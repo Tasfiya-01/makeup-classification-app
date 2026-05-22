@@ -16,34 +16,20 @@ st.set_page_config(
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@300;400;700&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Lato', sans-serif;
-    }
-
-    .stApp {
-        background: linear-gradient(160deg, #fdf6f0 0%, #fce8e8 50%, #f5e6f0 100%);
-    }
-
+    html, body, [class*="css"] { font-family: 'Lato', sans-serif; }
+    .stApp { background: linear-gradient(160deg, #fdf6f0 0%, #fce8e8 50%, #f5e6f0 100%); }
     section[data-testid="stSidebar"] {
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(10px);
         border-right: 1px solid #f0d9e5;
     }
-
     h1 {
         font-family: 'Playfair Display', serif !important;
         color: #b5547a !important;
         font-size: 2.6rem !important;
         font-weight: 700 !important;
-        letter-spacing: -0.5px;
     }
-
-    h3, h4 {
-        color: #7a3d5c !important;
-        font-family: 'Playfair Display', serif !important;
-    }
-
+    h3, h4 { color: #7a3d5c !important; font-family: 'Playfair Display', serif !important; }
     .result-card {
         background: rgba(255,255,255,0.75);
         border: 1.5px solid #e8b4cc;
@@ -52,9 +38,7 @@ st.markdown("""
         text-align: center;
         margin: 10px 0;
         box-shadow: 0 8px 32px rgba(181,84,122,0.10);
-        backdrop-filter: blur(8px);
     }
-
     .confidence-badge {
         background: linear-gradient(90deg, #d4799f, #b5547a);
         color: white;
@@ -64,50 +48,21 @@ st.markdown("""
         font-weight: 700;
         display: inline-block;
         margin: 10px 0;
-        letter-spacing: 0.5px;
         box-shadow: 0 4px 15px rgba(181,84,122,0.25);
     }
-
-    .stFileUploader {
-        border: 2px dashed #d4a0bc !important;
-        border-radius: 15px !important;
-        background: rgba(255,255,255,0.5) !important;
-    }
-
-    .stButton > button {
-        background: linear-gradient(90deg, #d4799f, #b5547a);
-        color: white;
-        border: none;
-        border-radius: 30px;
-        padding: 8px 24px;
-    }
-
     div[data-testid="stInfo"] {
         background: rgba(255,240,248,0.8);
         border: 1px solid #e8b4cc;
         color: #7a3d5c;
         border-radius: 12px;
     }
-
-    .stSpinner > div {
-        border-top-color: #b5547a !important;
-    }
-
-    hr {
-        border-color: #f0d0e0 !important;
-    }
+    hr { border-color: #f0d0e0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 CLASSES = [
-    "bold_makeup",
-    "casual_makeup",
-    "evening_glamour_makeup",
-    "evening_makeup",
-    "fantasy_makeup",
-    "no_makeup",
-    "smokey_eyes_makeup",
-    "vintage_makeup"
+    "bold_makeup", "casual_makeup", "evening_glamour_makeup", "evening_makeup",
+    "fantasy_makeup", "no_makeup", "smokey_eyes_makeup", "vintage_makeup"
 ]
 
 CLASS_INFO = {
@@ -122,6 +77,34 @@ CLASS_INFO = {
 }
 
 
+class GetItem(tf.keras.layers.Layer):
+    def __init__(self, item=0, **kwargs):
+        super().__init__(**kwargs)
+        self.item = item
+
+    def call(self, inputs):
+        return inputs[self.item]
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"item": self.item})
+        return config
+
+
+class Stack(tf.keras.layers.Layer):
+    def __init__(self, axis=0, **kwargs):
+        super().__init__(**kwargs)
+        self.axis = axis
+
+    def call(self, inputs):
+        return tf.stack(inputs, axis=self.axis)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"axis": self.axis})
+        return config
+
+
 @st.cache_resource
 def load_model():
     model_path = "model.h5"
@@ -134,27 +117,10 @@ def load_model():
             quiet=False
         )
 
-    class GetItem(tf.keras.layers.Layer):
-        def call(self, inputs, idx=0):
-            return inputs[idx]
-        def get_config(self):
-            return super().get_config()
-
-    class Stack(tf.keras.layers.Layer):
-        def call(self, inputs):
-            return tf.stack(inputs)
-        def get_config(self):
-            return super().get_config()
-
-    custom_objects = {
-        "GetItem": GetItem,
-        "Stack": Stack,
-    }
-
     keras.config.enable_unsafe_deserialization()
     model = tf.keras.models.load_model(
         model_path,
-        custom_objects=custom_objects,
+        custom_objects={"GetItem": GetItem, "Stack": Stack},
         compile=False
     )
     return model
@@ -171,29 +137,25 @@ def make_chart(prediction):
     labels = [f"{CLASS_INFO[c]['emoji']} {c.replace('_', ' ').title()}" for c in CLASSES]
     colors = ["#b5547a" if s == max(scores) else "#f0c8dc" for s in scores]
     fig = go.Figure(go.Bar(
-        x=scores,
-        y=labels,
-        orientation="h",
+        x=scores, y=labels, orientation="h",
         marker=dict(color=colors, line=dict(color="#e8b4cc", width=1)),
         text=[f"{s:.1f}%" for s in scores],
         textposition="outside",
         textfont=dict(color="#7a3d5c", size=12),
     ))
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#7a3d5c"),
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 115]),
         yaxis=dict(showgrid=False, tickfont=dict(size=13, color="#7a3d5c")),
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=350,
+        margin=dict(l=10, r=10, t=10, b=10), height=350,
     )
     return fig
 
 
 with st.sidebar:
     st.markdown("## 💄 About")
-    st.markdown("This AI classifier detects **8 makeup styles** from your photo using a deep learning model.")
+    st.markdown("This AI classifier detects **8 makeup styles** from your photo.")
     st.markdown("---")
     st.markdown("### 🎨 Style Guide")
     for cls, info in CLASS_INFO.items():
