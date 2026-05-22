@@ -1,4 +1,4 @@
-\streamlit
+streamlit
 tf-nightly
 numpy
 pillow
