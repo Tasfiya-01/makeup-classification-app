@@ -12,7 +12,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# ─── Custom CSS ───────────────────────────────────────────────
 st.markdown("""
 <style>
     .stApp { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
@@ -41,15 +40,9 @@ st.markdown("""
         display: inline-block;
         margin: 10px 0;
     }
-    .stFileUploader {
-        border: 2px dashed #e94560 !important;
-        border-radius: 15px !important;
-        padding: 20px !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Classes ──────────────────────────────────────────────────
 CLASSES = [
     "bold_makeup",
     "casual_makeup",
@@ -72,16 +65,16 @@ CLASS_INFO = {
     "vintage_makeup":         {"emoji": "🎭", "desc": "Classic retro styles from past decades"},
 }
 
-# ─── GetItem Layer Fix ────────────────────────────────────────
+
 @tf.keras.utils.register_keras_serializable()
 class GetItem(tf.keras.layers.Layer):
     def call(self, inputs, idx=0):
         return inputs[idx]
-    
+
     def get_config(self):
         return super().get_config()
 
-# ─── Model Loading ────────────────────────────────────────────
+
 @st.cache_resource
 def load_model():
     model_path = "model.h5"
@@ -95,34 +88,24 @@ def load_model():
         )
     model = tf.keras.models.load_model(
         model_path,
-        custom_objects={'GetItem': GetItem},
+        custom_objects={"GetItem": GetItem},
         compile=False
     )
     return model
-    except Exception:
-        model = tf.keras.models.load_model(
-            model_path,
-            compile=False,
-            safe_mode=False
-        )
-    return model
 
-# ─── Image Preprocessing ──────────────────────────────────────
+
 def preprocess_image(image):
     image = image.resize((224, 224))
     img_array = np.array(image.convert("RGB")) / 255.0
     return np.expand_dims(img_array, axis=0)
 
-# ─── Plotly Chart ─────────────────────────────────────────────
+
 def make_chart(prediction):
     scores = [float(prediction[0][i]) * 100 for i in range(len(CLASSES))]
     labels = [f"{CLASS_INFO[c]['emoji']} {c.replace('_', ' ').title()}" for c in CLASSES]
     colors = ["#e94560" if s == max(scores) else "#3a3a6e" for s in scores]
-
     fig = go.Figure(go.Bar(
-        x=scores,
-        y=labels,
-        orientation="h",
+        x=scores, y=labels, orientation="h",
         marker=dict(color=colors, line=dict(color="#ffffff22", width=1)),
         text=[f"{s:.1f}%" for s in scores],
         textposition="outside",
@@ -139,10 +122,10 @@ def make_chart(prediction):
     )
     return fig
 
-# ─── Sidebar ──────────────────────────────────────────────────
+
 with st.sidebar:
     st.markdown("## 💄 About")
-    st.markdown("This AI classifier detects **8 makeup styles** from your photo using a deep learning model.")
+    st.markdown("This AI classifier detects **8 makeup styles** from your photo.")
     st.markdown("---")
     st.markdown("### 🎨 Style Guide")
     for cls, info in CLASS_INFO.items():
@@ -151,7 +134,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Built with TensorFlow + Streamlit")
 
-# ─── Main UI ──────────────────────────────────────────────────
+
 st.markdown("# 💄 Makeup Style Classifier")
 st.markdown("#### Upload a face photo — AI will detect the makeup style instantly.")
 st.markdown("---")
@@ -167,7 +150,7 @@ with col1:
     )
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", width="stretch")
+        st.image(image, caption="Uploaded Image", use_container_width=True)
 
 with col2:
     st.markdown("### 🔍 Analysis Result")
@@ -176,14 +159,14 @@ with col2:
     else:
         with st.spinner("Analyzing makeup style..."):
             try:
-                model      = load_model()
-                processed  = preprocess_image(image)
+                model = load_model()
+                processed = preprocess_image(image)
                 prediction = model.predict(processed, verbose=0)
 
-                idx        = int(np.argmax(prediction))
+                idx = int(np.argmax(prediction))
                 confidence = float(np.max(prediction)) * 100
-                top_class  = CLASSES[idx]
-                info       = CLASS_INFO[top_class]
+                top_class = CLASSES[idx]
+                info = CLASS_INFO[top_class]
 
                 st.markdown(f"""
                 <div class="result-card">
@@ -200,7 +183,7 @@ with col2:
                 top3 = np.argsort(prediction[0])[::-1][:3]
                 for rank, i in enumerate(top3):
                     medal = ["🥇", "🥈", "🥉"][rank]
-                    cls   = CLASSES[i]
+                    cls = CLASSES[i]
                     score = float(prediction[0][i]) * 100
                     st.markdown(f"{medal} **{cls.replace('_',' ').title()}** — `{score:.1f}%`")
 
