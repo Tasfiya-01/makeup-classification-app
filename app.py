@@ -80,7 +80,7 @@ def load_model():
     model_path = "model.h5"
     if not os.path.exists(model_path):
         st.info("⬇️ Downloading model... please wait.")
-        file_id = "1vACDcidGM2r41GAMqbKRySnIbJ6y7JAg"
+        file_id = "https://drive.google.com/drive/folders/1okMi772YSi2zUz6Ys9beeBF0lynKmMNu?usp=drive_link"
         gdown.download(
             f"https://drive.google.com/uc?id={file_id}",
             model_path,
@@ -88,8 +88,8 @@ def load_model():
         )
     model = tf.keras.models.load_model(
         model_path,
-        custom_objects={"GetItem": GetItem},
-        compile=False
+        compile=False,
+        safe_mode=False
     )
     return model
 
