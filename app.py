@@ -1,11 +1,12 @@
+import os
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+
 import streamlit as st
 import tensorflow as tf
 from PIL import Image
 import numpy as np
-import os
 import gdown
 import plotly.graph_objects as go
-import keras
 
 st.set_page_config(
     page_title="Makeup Style Classifier",
@@ -77,34 +78,6 @@ CLASS_INFO = {
 }
 
 
-class GetItem(tf.keras.layers.Layer):
-    def __init__(self, item=0, **kwargs):
-        super().__init__(**kwargs)
-        self.item = item
-
-    def call(self, inputs):
-        return inputs[self.item]
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({"item": self.item})
-        return config
-
-
-class Stack(tf.keras.layers.Layer):
-    def __init__(self, axis=0, **kwargs):
-        super().__init__(**kwargs)
-        self.axis = axis
-
-    def call(self, inputs):
-        return tf.stack(inputs, axis=self.axis)
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({"axis": self.axis})
-        return config
-
-
 @st.cache_resource
 def load_model():
     model_path = "model.h5"
@@ -116,13 +89,7 @@ def load_model():
             model_path,
             quiet=False
         )
-
-    keras.config.enable_unsafe_deserialization()
-    model = tf.keras.models.load_model(
-        model_path,
-        custom_objects={"GetItem": GetItem, "Stack": Stack},
-        compile=False
-    )
+    model = tf.keras.models.load_model(model_path, compile=False)
     return model
 
 
