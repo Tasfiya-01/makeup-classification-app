@@ -1,7 +1,6 @@
-streamlit
+\streamlit
 tf-nightly
 numpy
 pillow
 gdown
 plotly
-tf_keras
