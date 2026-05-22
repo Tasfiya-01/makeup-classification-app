@@ -77,6 +77,9 @@ CLASS_INFO = {
 class GetItem(tf.keras.layers.Layer):
     def call(self, inputs, idx=0):
         return inputs[idx]
+    
+    def get_config(self):
+        return super().get_config()
 
 # ─── Model Loading ────────────────────────────────────────────
 @st.cache_resource
@@ -90,12 +93,12 @@ def load_model():
             model_path,
             quiet=False
         )
-    try:
-        model = tf.keras.models.load_model(
-            model_path,
-            custom_objects={'GetItem': GetItem},
-            compile=False
-        )
+    model = tf.keras.models.load_model(
+        model_path,
+        custom_objects={'GetItem': GetItem},
+        compile=False
+    )
+    return model
     except Exception:
         model = tf.keras.models.load_model(
             model_path,
